@@ -98,24 +98,27 @@ function getAiClient() {
 export async function getLlmFeedback(transcript, question, metrics, category, tier = 'medium') {
   const ai = getAiClient();
 
+  // Prefer fast low-latency models first to keep analysis instant
   const primaryModel = (tier === 'light'
     ? process.env.GEMINI_LIGHT_MODEL
-    : process.env.GEMINI_MEDIUM_MODEL) || 'gemini-3.8-flash';
+    : process.env.GEMINI_MEDIUM_MODEL) || 'gemini-3.5-flash-lite';
 
   const cleanPrimary = primaryModel.trim().toLowerCase().replace(/\s+/g, '-');
-  const candidateModels = [
+  
+  // Prioritise fast models and eliminate redundant duplicate attempts
+  const candidateModels = Array.from(new Set([
     cleanPrimary,
-    'gemini-3.8-flash',
     'gemini-3.5-flash-lite',
-  ];
+    'gemini-3.8-flash',
+  ]));
 
-  // Try candidate models in order (handles transient 503 capacity spikes)
   let lastError = null;
   for (const model of candidateModels) {
     try {
       console.log(`[EVAL] Running Gemini evaluation using model: ${model}`);
 
-      const response = await ai.models.generateContent({
+      // Add 8-second timeout so a hanging model doesn't stall the UI
+      const evalPromise = ai.models.generateContent({
         model,
         contents: USER_PROMPT_TEMPLATE(transcript, question, metrics, category),
         config: {
@@ -124,6 +127,12 @@ export async function getLlmFeedback(transcript, question, metrics, category, ti
           responseMimeType: 'application/json',
         },
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout: ${model} took longer than 8s`)), 8000)
+      );
+
+      const response = await Promise.race([evalPromise, timeoutPromise]);
 
       const content = response.text;
       if (!content) continue;
