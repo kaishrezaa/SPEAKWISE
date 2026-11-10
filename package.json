@@ -1,0 +1,16 @@
+{
+  "name": "speakwise",
+  "version": "1.0.0",
+  "description": "SpeakWise - AI-powered English communication coach",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "cd speakwise-client && npm run dev",
+    "dev:server": "cd speakwise-server && npm run dev",
+    "install:all": "cd speakwise-client && npm install && cd ../speakwise-server && npm install",
+    "build:client": "cd speakwise-client && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

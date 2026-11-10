@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0B0F19;
+  --color-bg-secondary: #111827;
+  --color-bg-card: #161D2B;
+  --color-bg-card-hover: #1C2535;
+  --color-accent-primary: #8B7CFF;
+  --color-accent-secondary: #38BDF8;
+  --color-accent-success: #34D399;
+  --color-accent-warning: #FBBF24;
+  --color-accent-error: #F87171;
+  --color-text-primary: #F8FAFC;
+  --color-text-muted: #94A3B8;
+  --color-text-faint: #475569;
+  --color-border: #1E2D3D;
+  --color-border-hover: #2D3F55;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #0B0F19;
+  color: #F8FAFC;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E2D3D;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2D3F55;
+}
+
+/* Recording pulse animation */
+@keyframes recordPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.record-pulse {
+  animation: recordPulse 1.5s ease-in-out infinite;
+}
+
+/* Waveform bar animation */
+@keyframes waveBar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.wave-bar {
+  animation: waveBar var(--duration, 0.8s) ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+/* Score circle */
+@keyframes scoreReveal {
+  from { stroke-dashoffset: 283; }
+  to { stroke-dashoffset: var(--target-offset); }
+}
+
+.score-circle {
+  animation: scoreReveal 1s ease-out forwards;
+}
+
+/* Fade in up */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* Loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #161D2B 25%, #1C2535 50%, #161D2B 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
