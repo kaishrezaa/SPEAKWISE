@@ -131,6 +131,7 @@ export default function SessionReport() {
       {feedback.improvedResponse && (
         <TtsPlayer
           text={feedback.improvedResponse}
+          toneRewrites={feedback.toneRewrites}
           selectedVoice={selectedVoice}
           onVoiceChange={(v) => { setSelectedVoice(v); saveSettings({ selectedVoice: v }); }}
         />

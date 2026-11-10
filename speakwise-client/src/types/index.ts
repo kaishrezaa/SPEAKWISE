@@ -35,22 +35,6 @@ export interface SpeakingQuestion {
   hint?: string;
 }
 
-export interface EvaluationFeedback {
-  overallScore: number;
-  scores: CategoryScores;
-  strengths: string[];
-  improvements: ImprovementItem[];
-  fillerWords: FillerWordAnalysis;
-  sentenceImprovements: SentenceImprovement[];
-  improvedResponse: string;
-  summary: string;
-  wordStats: WordStats;
-  speakingRate: SpeakingRate;
-  evaluationMethod: 'gemini' | 'deterministic' | 'llm';
-  evaluationNote?: string;
-  modelUsed?: string;
-}
-
 export interface CategoryScores {
   grammar: number;
   vocabulary: number;
@@ -62,6 +46,32 @@ export interface CategoryScores {
 export interface ImprovementItem {
   issue: string;
   detail: string;
+  solution?: string;
+}
+
+export interface ToneRewrites {
+  natural: string;
+  formal: string;
+  casual: string;
+  academic: string;
+  encouraging: string;
+}
+
+export interface EvaluationFeedback {
+  overallScore: number;
+  scores: CategoryScores;
+  strengths: string[];
+  improvements: ImprovementItem[];
+  fillerWords: FillerWordAnalysis;
+  sentenceImprovements: SentenceImprovement[];
+  improvedResponse: string;
+  toneRewrites?: ToneRewrites;
+  summary: string;
+  wordStats: WordStats;
+  speakingRate: SpeakingRate;
+  evaluationMethod: 'gemini' | 'deterministic' | 'llm';
+  evaluationNote?: string;
+  modelUsed?: string;
 }
 
 export interface FillerWordAnalysis {

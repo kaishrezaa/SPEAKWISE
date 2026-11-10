@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Volume2, AlertCircle, Sparkles, User } from 'lucide-react';
 import { synthesizeSpeech } from '../services/api';
-import type { TtsVoice } from '../types';
+import type { TtsVoice, ToneRewrites } from '../types';
 
 interface TtsPlayerProps {
   text: string;
+  toneRewrites?: ToneRewrites;
   selectedVoice: string;
   onVoiceChange: (voice: string) => void;
 }
@@ -34,7 +35,7 @@ const EMOTIONS: { id: EmotionTone; label: string; icon: string; hint: string }[]
 
 type TtsStatus = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'error';
 
-export default function TtsPlayer({ text, selectedVoice, onVoiceChange }: TtsPlayerProps) {
+export default function TtsPlayer({ text, toneRewrites, selectedVoice, onVoiceChange }: TtsPlayerProps) {
   const [status, setStatus] = useState<TtsStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -42,6 +43,11 @@ export default function TtsPlayer({ text, selectedVoice, onVoiceChange }: TtsPla
   const [activeGender, setActiveGender] = useState<'All' | 'Female' | 'Male'>('All');
   const [isFallback, setIsFallback] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Dynamically select the exact reworded script for the active tone
+  const activeScript = (toneRewrites && toneRewrites[selectedEmotion])
+    ? toneRewrites[selectedEmotion]
+    : text;
 
   useEffect(() => {
     return () => {
@@ -56,7 +62,7 @@ export default function TtsPlayer({ text, selectedVoice, onVoiceChange }: TtsPla
     setIsFallback(false);
 
     try {
-      const url = await synthesizeSpeech(text, selectedVoice, 'en-IN', selectedEmotion);
+      const url = await synthesizeSpeech(activeScript, selectedVoice, 'en-IN', selectedEmotion);
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       setAudioUrl(url);
 
@@ -82,7 +88,7 @@ export default function TtsPlayer({ text, selectedVoice, onVoiceChange }: TtsPla
   };
 
   const playFallback = () => {
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(activeScript);
     utterance.lang = 'en-IN';
     utterance.rate = selectedEmotion === 'formal' || selectedEmotion === 'academic' ? 0.9 : 1.0;
     utterance.onend = () => setStatus('ready');
@@ -164,9 +170,17 @@ export default function TtsPlayer({ text, selectedVoice, onVoiceChange }: TtsPla
         Hear how your thoughts sound when communicated with confidence and precision. Select a voice and tone to match your practice style.
       </p>
 
-      {/* Improved response quote */}
+      {/* Dynamic rewording preview tailored for the active tone */}
       <div className="bg-[#0B0F19] rounded-xl p-4 mb-5 border border-[#1E2D3D]">
-        <p className="text-xs text-[#F8FAFC] leading-relaxed italic">"{text}"</p>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-[#38BDF8]">
+            {selectedEmotion} Version Script
+          </span>
+          <span className="text-[10px] text-[#475569]">
+            Wording adapts to tone
+          </span>
+        </div>
+        <p className="text-xs text-[#F8FAFC] leading-relaxed italic">"{activeScript}"</p>
       </div>
 
       {/* Control Section: Voice Selection & Gender Filter */}

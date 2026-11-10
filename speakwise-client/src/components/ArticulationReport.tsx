@@ -54,7 +54,7 @@ export default function ArticulationReport({
           )}
           {feedback.evaluationMethod === 'gemini' && (
             <span className="text-[10px] text-[#38BDF8] bg-[#38BDF8]/10 border border-[#38BDF8]/20 px-2 py-1 rounded-full">
-              ✨ Gemini AI ({feedback.modelUsed || '3.8 Flash'})
+              ✨ Gemini AI ({feedback.modelUsed || '3.5 Flash-Lite'})
             </span>
           )}
           {feedback.evaluationMethod === 'deterministic' && (
@@ -63,7 +63,22 @@ export default function ArticulationReport({
             </span>
           )}
         </div>
-        <p className="text-sm text-[#94A3B8] italic">"{question.text}"</p>
+        <p className="text-sm text-[#94A3B8] italic mb-3">"{question.text}"</p>
+
+        {/* User's Original Spoken Transcript Card */}
+        <div className="bg-[#111827] border border-[#1E2D3D] rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#94A3B8]">
+              Your Original Spoken Words
+            </span>
+            <span className="text-[10px] text-[#475569]">
+              Gnani Prisma Transcription ({Math.round(duration)}s)
+            </span>
+          </div>
+          <p className="text-sm text-[#F8FAFC] leading-relaxed italic">
+            "{attempt.transcript || 'No transcript recorded'}"
+          </p>
+        </div>
       </div>
 
       {/* Score overview */}
@@ -169,18 +184,28 @@ export default function ArticulationReport({
           </div>
         )}
 
-        {/* Improvements */}
+        {/* Improvements with Concrete Solutions */}
         {feedback.improvements.length > 0 && (
           <div className="bg-[#161D2B] border border-[#1E2D3D] rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <AlertCircle size={14} className="text-[#FBBF24]" />
-              <h3 className="text-sm font-semibold text-[#F8FAFC]">Areas to Improve</h3>
+              <h3 className="text-sm font-semibold text-[#F8FAFC]">Identified Mistakes &amp; Actionable Solutions</h3>
             </div>
-            <ul className="space-y-2.5">
+            <ul className="space-y-3">
               {feedback.improvements.map((item, i) => (
-                <li key={i}>
-                  <p className="text-xs font-medium text-[#F8FAFC] mb-0.5">{item.issue}</p>
-                  <p className="text-xs text-[#475569] leading-relaxed">{item.detail}</p>
+                <li key={i} className="border-b border-[#1E2D3D] pb-2.5 last:border-0 last:pb-0">
+                  <p className="text-xs font-semibold text-[#FBBF24] mb-0.5">⚠️ {item.issue}</p>
+                  <p className="text-xs text-[#94A3B8] leading-relaxed mb-1.5">{item.detail}</p>
+                  {item.solution && (
+                    <div className="bg-[#0B0F19] rounded-lg p-2 border border-[#1E2D3D]">
+                      <span className="text-[10px] font-bold text-[#34D399] uppercase tracking-wider block mb-0.5">
+                        💡 How to fix it:
+                      </span>
+                      <p className="text-[11px] text-[#F8FAFC] leading-relaxed">
+                        {item.solution}
+                      </p>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -234,6 +259,7 @@ export default function ArticulationReport({
       {feedback.improvedResponse && (
         <TtsPlayer
           text={feedback.improvedResponse}
+          toneRewrites={feedback.toneRewrites}
           selectedVoice={selectedVoice}
           onVoiceChange={(v) => { setSelectedVoice(v); saveSettings({ selectedVoice: v }); }}
         />

@@ -85,12 +85,40 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
   }
 
+  const stopRecordingInternal = useCallback(() => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+    setRecordingState('stopping');
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+
+    const finalDuration = (Date.now() - startTimeRef.current) / 1000;
+    setDuration(Math.round(finalDuration));
+    setWaveformData(Array(32).fill(0.1));
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+      mediaRecorderRef.current.stop();
+    } catch {
+      // Ignore if already stopping
+    }
+  }, []);
+
   const startRecording = useCallback(async () => {
     setError(null);
+    setAutoStopped(false);
     setRecordingState('requesting');
 
     try {
-      // Check MediaRecorder support
       if (!window.MediaRecorder) {
         throw new Error('Your browser does not support audio recording. Please use Chrome or Firefox.');
       }
@@ -107,7 +135,6 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       streamRef.current = stream;
       chunksRef.current = [];
 
-      // Pick best supported format
       const mimeType = getSupportedMimeType();
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
@@ -124,23 +151,23 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         setRecordingState('idle');
       };
 
-      mediaRecorder.start(100); // collect in 100ms chunks
+      mediaRecorder.start(100);
       startTimeRef.current = Date.now();
       setRecordingState('recording');
       setDuration(0);
 
-      // Start duration timer and auto-stop at 30 seconds
+      // Interval checking elapsed time precisely and enforcing auto-stop
       timerRef.current = window.setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        setDuration(elapsed);
+        const elapsed = (Date.now() - startTimeRef.current) / 1000;
+        const rounded = Math.floor(elapsed);
+        setDuration(rounded);
 
         if (elapsed >= MAX_RECORDING_SECONDS) {
           setAutoStopped(true);
-          stopRecording();
+          stopRecordingInternal();
         }
-      }, 500);
+      }, 250);
 
-      // Start waveform
       startWaveformAnalysis(stream);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to access microphone';
@@ -153,36 +180,11 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       }
       setRecordingState('idle');
     }
-  }, []);
+  }, [stopRecordingInternal]);
 
   const stopRecording = useCallback(async () => {
-    if (!mediaRecorderRef.current || recordingState !== 'recording') return;
-    setRecordingState('stopping');
-
-    // Stop timers
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-
-    // Set final duration
-    const finalDuration = (Date.now() - startTimeRef.current) / 1000;
-    setDuration(Math.round(finalDuration));
-
-    // Stop waveform and reset
-    setWaveformData(Array(32).fill(0.1));
-
-    // Stop audio tracks
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-
-    mediaRecorderRef.current.stop();
-  }, [recordingState]);
+    stopRecordingInternal();
+  }, [stopRecordingInternal]);
 
   const resetRecording = useCallback(() => {
     cleanup();

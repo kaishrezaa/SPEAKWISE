@@ -41,6 +41,13 @@ export function deterministicEvaluate(transcript, question, metrics, category) {
     improvements,
     sentenceImprovements,
     improvedResponse,
+    toneRewrites: {
+      natural: improvedResponse,
+      formal: `It is evident that ${improvedResponse.toLowerCase().replace(/^i think\s*/i, '')}`,
+      casual: `Honestly, ${improvedResponse.toLowerCase()}`,
+      academic: `A rigorous analysis suggests that ${improvedResponse.toLowerCase().replace(/^i think\s*/i, '')}`,
+      encouraging: `Indeed, ${improvedResponse}`,
+    },
     summary,
     fillerWords: { total: fillerCount, breakdown: fillerBreakdown },
   };
@@ -119,31 +126,36 @@ function identifyImprovements(transcript, stats, fillerCount, speakingRate) {
   if (fillerRatio > 0.08) {
     improvements.push({
       issue: 'Excessive filler words',
-      detail: `${fillerCount} filler words detected (${Math.round(fillerRatio * 100)}% of your response). Try pausing silently instead of using "um", "like", or "basically".`
+      detail: `${fillerCount} filler words detected (${Math.round(fillerRatio * 100)}% of your response).`,
+      solution: 'Replace verbal fillers like "um", "like", or "basically" with deliberate 1-second silent pauses to structure your thoughts.'
     });
   }
   if (stats.wordCount < 25) {
     improvements.push({
-      issue: 'Response too brief',
-      detail: 'Your response is very short. Try to elaborate on your main point with an example or supporting reason.'
+      issue: 'Response too brief & underdeveloped',
+      detail: 'Your response was very short and missed the opportunity to explain your reasoning.',
+      solution: 'Use the Point-Reason-Example (P.R.E.) formula: state your viewpoint, explain why you hold it, and share a brief concrete real-life example.'
     });
   }
   if (stats.vocabularyRichness < 0.5) {
     improvements.push({
       issue: 'Repetitive vocabulary',
-      detail: 'You repeated many of the same words. Try using synonyms or paraphrasing to express your ideas more precisely.'
+      detail: 'You repeated many of the same general words.',
+      solution: 'Swap repeated words with more accurate terminology (e.g., replace "good" with "effective", "bad" with "counterproductive").'
     });
   }
   if (stats.averageWordsPerSentence > 25) {
     improvements.push({
-      issue: 'Sentences are too long',
-      detail: 'Your sentences run on too long. Break complex thoughts into shorter, clearer sentences.'
+      issue: 'Run-on sentences',
+      detail: 'Your thoughts were joined into overly long sentences.',
+      solution: 'Split run-ons into two punchy sentences using connective transitions like "Furthermore," or "Consequently,".'
     });
   }
   if (improvements.length === 0) {
     improvements.push({
-      issue: 'Practice pacing',
-      detail: 'Continue practising to develop even more natural fluency and sentence variety.'
+      issue: 'Pacing and delivery',
+      detail: 'Your baseline delivery is solid.',
+      solution: 'Practise varying your vocal cadence and emphasizing key conceptual words for extra authority.'
     });
   }
   return improvements.slice(0, 3);

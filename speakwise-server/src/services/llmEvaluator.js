@@ -1,29 +1,25 @@
 import { GoogleGenAI } from '@google/genai';
 
-const SYSTEM_PROMPT = `You are SpeakWise, an expert English communication coach. Your role is to evaluate spoken responses and help people communicate more clearly, naturally, and confidently.
+const SYSTEM_PROMPT = `You are SpeakWise, an expert English communication and articulation coach.
 
-Evaluate based on:
-1. GRAMMAR: Grammatical correctness, sentence structure, subject-verb agreement, tense consistency
-2. VOCABULARY: Word choice, repetition, vague expressions, appropriateness  
-3. FLUENCY: Identified filler words, sentence restarts, repetition patterns
-4. CLARITY: Central idea clarity, logical organisation, relevance, directness
-5. ARTICULATION: Precision of expression, conciseness, effective idea communication
+Your task is to thoroughly analyze the user's spoken response and provide deep, constructive coaching.
 
-SCORING GUIDELINES:
-- 90-100: Exceptional communication
-- 75-89: Good with minor issues
-- 60-74: Adequate but noticeable weaknesses
-- 45-59: Below average, significant issues
-- Below 45: Needs substantial work
+CRITICAL COACHING REQUIREMENTS:
+1. ELABORATION & DEPTH:
+   - If the user's response is short, brief, or basic, DO NOT simply fix punctuation or minor grammar.
+   - You MUST expand and enrich the response into a complete, well-reasoned, and articulate argument (approx 3-5 sentences) while strictly preserving the user's authentic opinion and original context.
+   - Show how a mature communicator would deliver the same thought with confidence, substance, and logical flow.
 
-IMPORTANT RULES:
-- Do NOT penalise short responses that communicate clearly
-- Do NOT reward complexity for its own sake
-- Do NOT introduce facts, arguments or ideas the user didn't mention
-- Do NOT be condescending - be encouraging and constructive
-- Preserve the user's original meaning in the improved response
-- The improved response should sound natural, not overly formal
-- Only evaluate what can be determined from the transcript text`;
+2. SPECIFIC ACTIONABLE SOLUTIONS:
+   - For every improvement point, do NOT just describe the flaw. Provide a concrete, step-by-step "solution" with an exact script of what the user should say instead.
+
+3. VOCABULARY & STYLE REWRITES (TONES):
+   - You MUST generate distinct versions of the improved response tailored with authentic vocabulary for different contexts:
+     * natural: Everyday conversational clarity that sounds authentic and warm.
+     * formal: Professional, executive workplace language (boardroom/interview ready).
+     * casual: Relaxed, friendly, and approachable conversational wording.
+     * academic: Scholarly, analytical language with precise conceptual vocabulary suitable for presentations and essays.
+     * encouraging: Energetic, inspiring, and confident delivery.`;
 
 const USER_PROMPT_TEMPLATE = (transcript, question, metrics, category) => `
 SPEAKING QUESTION (${category || 'General'}):
@@ -41,7 +37,7 @@ DETERMINISTIC METRICS:
 - Speaking rate: ${metrics.speakingRate.wpm > 0 ? `~${metrics.speakingRate.wpm} WPM` : 'Unknown (no duration data)'}
 - Recording duration: ${metrics.durationSeconds > 0 ? `${metrics.durationSeconds.toFixed(1)} seconds` : 'Unknown'}
 
-Please evaluate this response and return ONLY valid JSON (no markdown formatting, no code fences):
+Please evaluate this response and return ONLY valid JSON:
 
 {
   "overallScore": <0-100>,
@@ -58,23 +54,32 @@ Please evaluate this response and return ONLY valid JSON (no markdown formatting
   ],
   "improvements": [
     {
-      "issue": "<issue title>",
-      "detail": "<detailed explanation of the issue>"
+      "issue": "<issue title, e.g. Response too brief & unelaborated>",
+      "detail": "<what went wrong>",
+      "solution": "<specific actionable solution and advice on how to fix it>"
     },
     {
-      "issue": "<issue title>",
-      "detail": "<detailed explanation>"
+      "issue": "<issue title, e.g. Vague vocabulary & weak impact>",
+      "detail": "<what went wrong>",
+      "solution": "<specific actionable solution>"
     }
   ],
   "sentenceImprovements": [
     {
-      "original": "<exact phrase from user's response>",
-      "improved": "<clearer version>",
-      "explanation": "<why this version communicates better>"
+      "original": "<exact phrase/sentence from transcript with mistakes>",
+      "improved": "<re-articulated clearer and richer version>",
+      "explanation": "<explain the specific mistake and why the revision communicates better>"
     }
   ],
-  "improvedResponse": "<complete improved version that preserves the user's meaning, sounds natural>",
-  "summary": "<2-3 sentence overall assessment, encouraging but honest>"
+  "improvedResponse": "<complete improved response, fully elaborated if user was brief, preserving context>",
+  "toneRewrites": {
+    "natural": "<conversational, warm, polished version>",
+    "formal": "<executive, professional workplace vocabulary and structure>",
+    "casual": "<relaxed, everyday conversational wording>",
+    "academic": "<bookish, analytical, sophisticated terminology and complex reasoning>",
+    "encouraging": "<confident, uplifting, and inspiring wording>"
+  },
+  "summary": "<2-3 sentence honest assessment highlighting potential and main area to practice>"
 }`;
 
 let aiClient = null;
@@ -158,8 +163,15 @@ export async function getLlmFeedback(transcript, question, metrics, category, ti
         },
         strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 3) : [],
         improvements: Array.isArray(parsed.improvements) ? parsed.improvements.slice(0, 3) : [],
-        sentenceImprovements: Array.isArray(parsed.sentenceImprovements) ? parsed.sentenceImprovements.slice(0, 3) : [],
+        sentenceImprovements: Array.isArray(parsed.sentenceImprovements) ? parsed.sentenceImprovements.slice(0, 4) : [],
         improvedResponse: parsed.improvedResponse || '',
+        toneRewrites: parsed.toneRewrites || {
+          natural: parsed.improvedResponse || '',
+          formal: parsed.improvedResponse || '',
+          casual: parsed.improvedResponse || '',
+          academic: parsed.improvedResponse || '',
+          encouraging: parsed.improvedResponse || '',
+        },
         summary: parsed.summary || '',
         fillerWords: { total: 0, breakdown: {} },
         modelUsed: model,
