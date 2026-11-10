@@ -25,7 +25,7 @@ export function deterministicEvaluate(transcript, question, metrics, category) {
   const strengths = identifyStrengths(transcript, wordStats, fillerCount, speakingRate);
   const improvements = identifyImprovements(transcript, wordStats, fillerCount, speakingRate);
   const sentenceImprovements = generateSentenceImprovements(transcript);
-  const improvedResponse = generateImprovedResponse(transcript);
+  const improvedResponse = generateImprovedResponse(transcript, question);
   const summary = generateSummary(overallScore, wordStats, fillerCount);
 
   return {
@@ -43,10 +43,10 @@ export function deterministicEvaluate(transcript, question, metrics, category) {
     improvedResponse,
     toneRewrites: {
       natural: improvedResponse,
-      formal: `It is evident that ${improvedResponse.toLowerCase().replace(/^i think\s*/i, '')}`,
-      casual: `Honestly, ${improvedResponse.toLowerCase()}`,
-      academic: `A rigorous analysis suggests that ${improvedResponse.toLowerCase().replace(/^i think\s*/i, '')}`,
-      encouraging: `Indeed, ${improvedResponse}`,
+      formal: `From a professional perspective, ${improvedResponse.charAt(0).toLowerCase() + improvedResponse.slice(1)}`,
+      casual: `Honestly speaking, ${improvedResponse.charAt(0).toLowerCase() + improvedResponse.slice(1)}`,
+      academic: `A substantive analysis demonstrates that ${improvedResponse.charAt(0).toLowerCase() + improvedResponse.slice(1)}`,
+      encouraging: `I strongly believe that ${improvedResponse.charAt(0).toLowerCase() + improvedResponse.slice(1)}`,
     },
     summary,
     fillerWords: { total: fillerCount, breakdown: fillerBreakdown },
@@ -193,21 +193,25 @@ function improveSentence(sentence) {
   return improved !== sentence ? improved : null;
 }
 
-function generateImprovedResponse(transcript) {
-  // Simple heuristic improvement of full response
-  let improved = transcript;
-  improved = improved.replace(/\b(um|uh)\b,?\s*/gi, '');
-  improved = improved.replace(/\blike,\s*/gi, '');
-  improved = improved.replace(/\bbasically,?\s*/gi, '');
-  improved = improved.replace(/\byou know,?\s*/gi, '');
-  improved = improved.replace(/\bI mean,?\s*/gi, '');
-  improved = improved.replace(/\bso like\b/gi, 'so');
-  improved = improved.replace(/\bkind of\b/gi, 'somewhat');
-  improved = improved.replace(/\bsort of\b/gi, 'somewhat');
-  improved = improved.replace(/\ba lot of\b/gi, 'many');
-  improved = improved.replace(/\bvery very\b/gi, 'very');
-  improved = improved.replace(/\s+/g, ' ').trim();
-  return improved || transcript;
+function generateImprovedResponse(transcript, question = '') {
+  const clean = transcript
+    .replace(/\b(um|uh|er|hmm)\b,?\s*/gi, '')
+    .replace(/\b(like|basically|you know|i mean)\b,?\s*/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // If transcript is very short, construct a meaningful, well-formed thought based on question context
+  if (clean.split(/\s+/).length < 15) {
+    return `In my view, ${clean.charAt(0).toLowerCase() + clean.slice(1)}. When we look at this in a broader context, having a clear focus and consistent dedication allows us to achieve meaningful, long-term outcomes.`;
+  }
+
+  // Refine structure
+  let improved = clean;
+  improved = improved.replace(/\b(so basically|and like|so yeah)\b/gi, 'Therefore,');
+  improved = improved.replace(/\ba lot of\b/gi, 'substantial');
+  improved = improved.replace(/\bkind of|sort of\b/gi, '');
+  improved = improved.charAt(0).toUpperCase() + improved.slice(1);
+  return improved;
 }
 
 function generateSummary(score, stats, fillerCount) {
