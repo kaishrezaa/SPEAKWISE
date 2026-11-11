@@ -7,7 +7,7 @@ const router = express.Router();
 // Use memory storage - audio arrives as buffer, not disk file
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
   fileFilter: (req, file, cb) => {
     const allowed = ['audio/webm', 'audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/ogg', 'audio/mp4', 'audio/x-m4a'];
     if (allowed.includes(file.mimetype) || file.mimetype.startsWith('audio/')) {

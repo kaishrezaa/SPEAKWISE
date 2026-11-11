@@ -15,9 +15,7 @@ interface UseAudioRecorderReturn {
   waveformData: number[];
 }
 
-const MAX_RECORDING_SECONDS = 30;
-
-export function useAudioRecorder(): UseAudioRecorderReturn {
+export function useAudioRecorder(maxDurationSeconds: number = 30): UseAudioRecorderReturn {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [duration, setDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -25,6 +23,11 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const [error, setError] = useState<string | null>(null);
   const [autoStopped, setAutoStopped] = useState(false);
   const [waveformData, setWaveformData] = useState<number[]>(Array(32).fill(0.1));
+
+  const maxDurationRef = useRef<number>(maxDurationSeconds);
+  useEffect(() => {
+    maxDurationRef.current = maxDurationSeconds;
+  }, [maxDurationSeconds]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -162,7 +165,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         const rounded = Math.floor(elapsed);
         setDuration(rounded);
 
-        if (elapsed >= MAX_RECORDING_SECONDS) {
+        if (elapsed >= maxDurationRef.current) {
           setAutoStopped(true);
           stopRecordingInternal();
         }

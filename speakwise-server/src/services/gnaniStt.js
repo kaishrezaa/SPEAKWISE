@@ -44,6 +44,7 @@ export async function transcribeAudio(audioBuffer, mimeType, durationSeconds) {
   formData.append('language_code', GNANI_STT_LANGUAGE);
 
   try {
+    const timeoutMs = Math.max(60000, Math.round(durationSeconds * 2000));
     const response = await axios.post(
       `${GNANI_STT_BASE_URL}/stt/v3`,
       formData,
@@ -52,8 +53,8 @@ export async function transcribeAudio(audioBuffer, mimeType, durationSeconds) {
           'X-API-Key-ID': process.env.GNANI_API_KEY,
           ...formData.getHeaders(),
         },
-        timeout: 30000, // 30 second timeout
-        maxContentLength: 25 * 1024 * 1024,
+        timeout: timeoutMs,
+        maxContentLength: 50 * 1024 * 1024,
       }
     );
 

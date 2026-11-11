@@ -84,15 +84,16 @@ export function getDashboardStats(): DashboardStats {
 export interface UserSettings {
   selectedVoice: string;
   preferredCategory: string;
+  recordingLimitSeconds?: number;
 }
 
 export function getSettings(): UserSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { selectedVoice: 'Shivani', preferredCategory: 'everyday' };
-    return JSON.parse(raw);
+    if (!raw) return { selectedVoice: 'Shivani', preferredCategory: 'everyday', recordingLimitSeconds: 30 };
+    return { recordingLimitSeconds: 30, ...JSON.parse(raw) };
   } catch {
-    return { selectedVoice: 'Shivani', preferredCategory: 'everyday' };
+    return { selectedVoice: 'Shivani', preferredCategory: 'everyday', recordingLimitSeconds: 30 };
   }
 }
 
