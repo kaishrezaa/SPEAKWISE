@@ -99,6 +99,26 @@ export async function checkServerHealth(): Promise<{
   return response.json();
 }
 
+// ─── AI Question Generation ───────────────────────────────────────────────
+
+export async function generateQuestion(
+  category: string,
+  previousQuestions: string[]
+): Promise<{ id: string; text: string; hint: string; difficulty: 'beginner' | 'intermediate' | 'advanced'; category: string; isAiGenerated: boolean }> {
+  const response = await fetch(`${API_BASE}/questions/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category, previousQuestions }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Generation failed' }));
+    throw new ApiError(errorData.error || 'Question generation failed', errorData.code, response.status);
+  }
+
+  return response.json();
+}
+
 // ─── Error Class ──────────────────────────────────────────────────────────
 
 export class ApiError extends Error {

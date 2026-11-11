@@ -4,6 +4,7 @@ import cors from 'cors';
 import speechRoutes from './routes/speech.js';
 import evaluationRoutes from './routes/evaluation.js';
 import ttsRoutes from './routes/tts.js';
+import questionsRoutes from './routes/questions.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -36,6 +37,7 @@ app.get('/health', (req, res) => {
 app.use('/api/speech', speechRoutes);
 app.use('/api/evaluate', evaluationRoutes);
 app.use('/api/tts', ttsRoutes);
+app.use('/api/questions', questionsRoutes);
 
 // Error handler
 app.use(errorHandler);

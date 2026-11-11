@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { RotateCcw, Plus, AlertCircle, CheckCircle } from 'lucide-react';
+import { RotateCcw, Plus, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
 import type { SpeakingQuestion, EvaluationFeedback } from '../types';
 import { saveSettings } from '../utils/storage';
 import TtsPlayer from './TtsPlayer';
 import ScoreMeter from './ScoreMeter';
+import HighlightedTranscript from './HighlightedTranscript';
 
 interface AttemptData {
   transcript: string;
@@ -18,7 +19,8 @@ interface ArticulationReportProps {
   firstAttempt?: AttemptData;
   onSpeakAgain?: () => void;
   onNewQuestion: () => void;
-  selectedVoice: string;}
+  selectedVoice: string;
+}
 
 export default function ArticulationReport({
   question,
@@ -33,10 +35,11 @@ export default function ArticulationReport({
   const isComparison = attemptNumber === 2 && !!firstAttempt;
   const [selectedVoice, setSelectedVoice] = useState(initialVoice || 'Shivani');
 
-  const scoreColor = (s: number) => s >= 75 ? '#34D399' : s >= 55 ? '#FBBF24' : '#F87171';
-  const scoreDiff = isComparison && firstAttempt
-    ? feedback.overallScore - firstAttempt.feedback.overallScore
-    : 0;
+  const scoreColor = (s: number) => (s >= 75 ? '#34D399' : s >= 55 ? '#FBBF24' : '#F87171');
+  const scoreDiff =
+    isComparison && firstAttempt
+      ? feedback.overallScore - firstAttempt.feedback.overallScore
+      : 0;
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
@@ -65,7 +68,7 @@ export default function ArticulationReport({
         </div>
         <p className="text-sm text-[#94A3B8] italic mb-3">"{question.text}"</p>
 
-        {/* User's Original Spoken Transcript Card */}
+        {/* User's Original Spoken Words Card with Highlighted Fillers and Mistakes */}
         <div className="bg-[#111827] border border-[#1E2D3D] rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] uppercase font-bold tracking-wider text-[#94A3B8]">
@@ -75,9 +78,12 @@ export default function ArticulationReport({
               Gnani Prisma Transcription ({Math.round(duration)}s)
             </span>
           </div>
-          <p className="text-sm text-[#F8FAFC] leading-relaxed italic">
-            "{attempt.transcript || 'No transcript recorded'}"
-          </p>
+
+          <HighlightedTranscript
+            transcript={attempt.transcript || 'No transcript recorded'}
+            fillerBreakdown={feedback.fillerWords.breakdown}
+            sentenceImprovements={feedback.sentenceImprovements}
+          />
         </div>
       </div>
 
@@ -89,7 +95,9 @@ export default function ArticulationReport({
             <svg width="80" height="80" viewBox="0 0 80 80">
               <circle cx="40" cy="40" r="34" fill="none" stroke="#1E2D3D" strokeWidth="6" />
               <circle
-                cx="40" cy="40" r="34"
+                cx="40"
+                cy="40"
+                r="34"
                 fill="none"
                 stroke={scoreColor(feedback.overallScore)}
                 strokeWidth="6"
@@ -99,7 +107,15 @@ export default function ArticulationReport({
                 transform="rotate(-90 40 40)"
                 style={{ transition: 'stroke-dashoffset 1s ease-out' }}
               />
-              <text x="40" y="40" textAnchor="middle" dominantBaseline="middle" fill={scoreColor(feedback.overallScore)} fontSize="18" fontWeight="700">
+              <text
+                x="40"
+                y="40"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={scoreColor(feedback.overallScore)}
+                fontSize="18"
+                fontWeight="700"
+              >
                 {feedback.overallScore}
               </text>
               <text x="40" y="55" textAnchor="middle" fill="#475569" fontSize="8">
@@ -114,7 +130,9 @@ export default function ArticulationReport({
                 {isComparison ? 'Second Attempt Score' : 'Overall Communication Score'}
               </h2>
               {isComparison && scoreDiff !== 0 && (
-                <span className={`text-sm font-semibold ${scoreDiff > 0 ? 'text-[#34D399]' : 'text-[#F87171]'}`}>
+                <span
+                  className={`text-sm font-semibold ${scoreDiff > 0 ? 'text-[#34D399]' : 'text-[#F87171]'}`}
+                >
                   {scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff}
                 </span>
               )}
@@ -124,44 +142,140 @@ export default function ArticulationReport({
             {/* Category scores */}
             <div className="grid grid-cols-5 gap-2">
               {Object.entries(feedback.scores).map(([key, val]) => (
-                <ScoreMeter key={key} label={SCORE_LABELS[key as keyof typeof SCORE_LABELS]} value={val} />
+                <ScoreMeter
+                  key={key}
+                  label={SCORE_LABELS[key as keyof typeof SCORE_LABELS]}
+                  value={val}
+                />
               ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Comparison banner */}
+      {/* Richer Attempt Comparison view */}
       {isComparison && firstAttempt && (
-        <div className={`rounded-xl p-4 mb-5 border ${scoreDiff > 0 ? 'bg-[#34D399]/5 border-[#34D399]/20' : scoreDiff < 0 ? 'bg-[#F87171]/5 border-[#F87171]/20' : 'bg-[#161D2B] border-[#1E2D3D]'}`}>
-          <h3 className="text-sm font-semibold text-[#F8FAFC] mb-3">Comparison: Attempt 1 vs Attempt 2</h3>
+        <div
+          className={`rounded-xl p-5 mb-5 border ${
+            scoreDiff > 0
+              ? 'bg-[#34D399]/5 border-[#34D399]/20'
+              : scoreDiff < 0
+                ? 'bg-[#F87171]/5 border-[#F87171]/20'
+                : 'bg-[#161D2B] border-[#1E2D3D]'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-[#F8FAFC]">
+              Detailed Comparison: Attempt 1 vs Attempt 2
+            </h3>
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded ${
+                scoreDiff > 0
+                  ? 'bg-[#34D399]/15 text-[#34D399]'
+                  : scoreDiff < 0
+                    ? 'bg-[#F87171]/15 text-[#F87171]'
+                    : 'bg-[#1E2D3D] text-[#94A3B8]'
+              }`}
+            >
+              {scoreDiff > 0 ? `Improved by +${scoreDiff} points` : scoreDiff < 0 ? `${scoreDiff} points` : 'No score change'}
+            </span>
+          </div>
+
+          {/* Side-by-side transcripts */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-[#0B0F19] rounded-lg p-3 border border-[#1E2D3D]">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                  Attempt 1 Transcript
+                </span>
+                <span className="text-[10px] text-[#475569]">
+                  {Math.round(firstAttempt.duration)}s · {firstAttempt.feedback.overallScore}/100
+                </span>
+              </div>
+              <p className="text-xs text-[#94A3B8] italic leading-relaxed">
+                "{firstAttempt.transcript}"
+              </p>
+            </div>
+
+            <div className="bg-[#0B0F19] rounded-lg p-3 border border-[#8B7CFF]/30">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B7CFF]">
+                  Attempt 2 Transcript
+                </span>
+                <span className="text-[10px] text-[#34D399]">
+                  {Math.round(duration)}s · {feedback.overallScore}/100
+                </span>
+              </div>
+              <p className="text-xs text-[#F8FAFC] italic leading-relaxed">
+                "{attempt.transcript}"
+              </p>
+            </div>
+          </div>
+
+          {/* Metric comparison grid */}
+          <div className="grid grid-cols-4 gap-2 mb-4 bg-[#0B0F19] p-3 rounded-xl border border-[#1E2D3D]">
+            <div className="text-center">
+              <p className="text-[10px] text-[#475569] mb-0.5">Filler Words</p>
+              <p className="text-xs font-semibold text-[#F8FAFC] flex items-center justify-center gap-1">
+                <span>{firstAttempt.feedback.fillerWords.total}</span>
+                <ArrowRight size={10} className="text-[#475569]" />
+                <span className={feedback.fillerWords.total < firstAttempt.feedback.fillerWords.total ? 'text-[#34D399]' : ''}>
+                  {feedback.fillerWords.total}
+                </span>
+              </p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-[10px] text-[#475569] mb-0.5">Speaking Rate</p>
+              <p className="text-xs font-semibold text-[#F8FAFC] flex items-center justify-center gap-1">
+                <span>{firstAttempt.feedback.speakingRate?.wpm || 0}</span>
+                <ArrowRight size={10} className="text-[#475569]" />
+                <span>{feedback.speakingRate?.wpm || 0} WPM</span>
+              </p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-[10px] text-[#475569] mb-0.5">Word Count</p>
+              <p className="text-xs font-semibold text-[#F8FAFC] flex items-center justify-center gap-1">
+                <span>{firstAttempt.feedback.wordStats?.wordCount || 0}</span>
+                <ArrowRight size={10} className="text-[#475569]" />
+                <span>{feedback.wordStats?.wordCount || 0}</span>
+              </p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-[10px] text-[#475569] mb-0.5">Duration</p>
+              <p className="text-xs font-semibold text-[#F8FAFC] flex items-center justify-center gap-1">
+                <span>{Math.round(firstAttempt.duration)}s</span>
+                <ArrowRight size={10} className="text-[#475569]" />
+                <span>{Math.round(duration)}s</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Category Scores Comparison */}
           <div className="grid grid-cols-5 gap-3">
             {Object.entries(feedback.scores).map(([key, val]) => {
-              const prev = firstAttempt.feedback.scores[key as keyof typeof firstAttempt.feedback.scores];
+              const prev =
+                firstAttempt.feedback.scores[key as keyof typeof firstAttempt.feedback.scores];
               const diff = val - prev;
               return (
                 <div key={key} className="text-center">
-                  <p className="text-[10px] text-[#475569] mb-1">{SCORE_LABELS[key as keyof typeof SCORE_LABELS]}</p>
+                  <p className="text-[10px] text-[#475569] mb-1">
+                    {SCORE_LABELS[key as keyof typeof SCORE_LABELS]}
+                  </p>
                   <p className="text-sm font-semibold text-[#F8FAFC]">{val}</p>
-                  <p className={`text-[10px] font-medium ${diff > 0 ? 'text-[#34D399]' : diff < 0 ? 'text-[#F87171]' : 'text-[#475569]'}`}>
+                  <p
+                    className={`text-[10px] font-medium ${
+                      diff > 0 ? 'text-[#34D399]' : diff < 0 ? 'text-[#F87171]' : 'text-[#475569]'
+                    }`}
+                  >
                     {diff > 0 ? `+${diff}` : diff === 0 ? '—' : diff}
                   </p>
                 </div>
               );
             })}
           </div>
-
-          {/* Filler word comparison */}
-          {firstAttempt.feedback.fillerWords.total !== feedback.fillerWords.total && (
-            <p className="text-xs text-[#94A3B8] mt-3">
-              Filler words: {firstAttempt.feedback.fillerWords.total} → {feedback.fillerWords.total}
-              {feedback.fillerWords.total < firstAttempt.feedback.fillerWords.total
-                ? ` (↓ ${firstAttempt.feedback.fillerWords.total - feedback.fillerWords.total} fewer ✓)`
-                : feedback.fillerWords.total > firstAttempt.feedback.fillerWords.total
-                  ? ` (↑ ${feedback.fillerWords.total - firstAttempt.feedback.fillerWords.total} more)`
-                  : ''}
-            </p>
-          )}
         </div>
       )}
 
@@ -189,7 +303,9 @@ export default function ArticulationReport({
           <div className="bg-[#161D2B] border border-[#1E2D3D] rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <AlertCircle size={14} className="text-[#FBBF24]" />
-              <h3 className="text-sm font-semibold text-[#F8FAFC]">Identified Mistakes &amp; Actionable Solutions</h3>
+              <h3 className="text-sm font-semibold text-[#F8FAFC]">
+                Identified Mistakes &amp; Actionable Solutions
+              </h3>
             </div>
             <ul className="space-y-3">
               {feedback.improvements.map((item, i) => (
@@ -218,11 +334,16 @@ export default function ArticulationReport({
         <div className="bg-[#161D2B] border border-[#1E2D3D] rounded-xl p-4 mb-5">
           <h3 className="text-sm font-semibold text-[#F8FAFC] mb-3">
             Filler Word Analysis
-            <span className="ml-2 text-xs font-normal text-[#FBBF24]">{feedback.fillerWords.total} detected</span>
+            <span className="ml-2 text-xs font-normal text-[#FBBF24]">
+              {feedback.fillerWords.total} detected
+            </span>
           </h3>
           <div className="flex flex-wrap gap-2">
             {Object.entries(feedback.fillerWords.breakdown).map(([word, count]) => (
-              <span key={word} className="text-xs px-2.5 py-1 rounded-full bg-[#FBBF24]/10 text-[#FBBF24] border border-[#FBBF24]/20">
+              <span
+                key={word}
+                className="text-xs px-2.5 py-1 rounded-full bg-[#FBBF24]/10 text-[#FBBF24] border border-[#FBBF24]/20"
+              >
                 "{word}" × {count}
               </span>
             ))}
@@ -241,11 +362,15 @@ export default function ArticulationReport({
             {feedback.sentenceImprovements.map((si, i) => (
               <div key={i} className="border-l-2 border-[#1E2D3D] pl-4">
                 <div className="mb-1.5">
-                  <span className="text-[10px] text-[#475569] uppercase tracking-widest block mb-1">Original</span>
+                  <span className="text-[10px] text-[#475569] uppercase tracking-widest block mb-1">
+                    Original
+                  </span>
                   <p className="text-xs text-[#94A3B8] italic">"{si.original}"</p>
                 </div>
                 <div className="mb-1.5">
-                  <span className="text-[10px] text-[#8B7CFF] uppercase tracking-widest block mb-1">Improved</span>
+                  <span className="text-[10px] text-[#8B7CFF] uppercase tracking-widest block mb-1">
+                    Improved
+                  </span>
                   <p className="text-xs text-[#F8FAFC] font-medium">"{si.improved}"</p>
                 </div>
                 <p className="text-[11px] text-[#475569] leading-relaxed">{si.explanation}</p>
@@ -261,7 +386,10 @@ export default function ArticulationReport({
           text={feedback.improvedResponse}
           toneRewrites={feedback.toneRewrites}
           selectedVoice={selectedVoice}
-          onVoiceChange={(v) => { setSelectedVoice(v); saveSettings({ selectedVoice: v }); }}
+          onVoiceChange={(v) => {
+            setSelectedVoice(v);
+            saveSettings({ selectedVoice: v });
+          }}
         />
       )}
 
@@ -271,7 +399,10 @@ export default function ArticulationReport({
         <div className="grid grid-cols-4 gap-4">
           <StatItem label="Words" value={feedback.wordStats?.wordCount?.toString() || '—'} />
           <StatItem label="Sentences" value={feedback.wordStats?.sentenceCount?.toString() || '—'} />
-          <StatItem label="Speaking Rate" value={feedback.speakingRate?.wpm > 0 ? `${feedback.speakingRate.wpm} WPM` : '—'} />
+          <StatItem
+            label="Speaking Rate"
+            value={feedback.speakingRate?.wpm > 0 ? `${feedback.speakingRate.wpm} WPM` : '—'}
+          />
           <StatItem label="Duration" value={duration > 0 ? `${Math.round(duration)}s` : '—'} />
         </div>
       </div>
@@ -290,7 +421,9 @@ export default function ArticulationReport({
         )}
         <button
           onClick={onNewQuestion}
-          className={`${isComparison ? 'flex-1' : ''} flex items-center justify-center gap-2 py-3 px-5 rounded-xl text-sm font-medium text-[#94A3B8] bg-[#161D2B] border border-[#1E2D3D] hover:border-[#2D3F55] hover:text-[#F8FAFC] transition-all`}
+          className={`${
+            isComparison ? 'flex-1' : ''
+          } flex items-center justify-center gap-2 py-3 px-5 rounded-xl text-sm font-medium text-[#94A3B8] bg-[#161D2B] border border-[#1E2D3D] hover:border-[#2D3F55] hover:text-[#F8FAFC] transition-all`}
         >
           <Plus size={15} />
           New Question
@@ -299,7 +432,9 @@ export default function ArticulationReport({
 
       {/* Tagline */}
       {isComparison && (
-        <p className="text-center text-xs text-[#475569] mt-6">SpeakWise · Think clearly. Speak confidently.</p>
+        <p className="text-center text-xs text-[#475569] mt-6">
+          SpeakWise · Think clearly. Speak confidently.
+        </p>
       )}
     </div>
   );

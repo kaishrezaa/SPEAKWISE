@@ -32,7 +32,6 @@ const FILLER_WORD_CONFIGS = {
 export function detectFillerWords(transcript, languageCode = 'en-IN') {
   const config = FILLER_WORD_CONFIGS[languageCode] || FILLER_WORD_CONFIGS['en-IN'];
   const text = transcript.toLowerCase();
-  const words = text.split(/\s+/);
 
   const breakdown = {};
   let total = 0;
@@ -67,17 +66,34 @@ export function detectFillerWords(transcript, languageCode = 'en-IN') {
     }
   }
 
-  // Detect contextual fillers
-  for (const [filler] of Object.entries(config.contextualFillers)) {
-    const regex = new RegExp(`\\b${filler.replace(/\s+/g, '\\s+')}\\b`, 'gi');
+  // Detect contextual fillers with exemption rules applied
+  for (const [filler, fillerConfig] of Object.entries(config.contextualFillers)) {
+    const regex = new RegExp(`\\b${filler.replace(/\\s+/g, '\\s+')}\\b`, 'gi');
     const matches = [...transcript.matchAll(regex)];
 
-    // Simple context check: not at start of a meaningful clause
-    let fillerCount = matches.length;
+    let fillerCount = 0;
+    for (const m of matches) {
+      const before = transcript.slice(0, m.index).trimEnd().toLowerCase();
+
+      // Check exemptAfter: skip if immediately preceded by an exempt word/phrase (e.g. "would like")
+      if (fillerConfig.exemptAfter) {
+        const isExempt = fillerConfig.exemptAfter.some(exempt => before.endsWith(exempt));
+        if (isExempt) continue;
+      }
+
+      // Check exemptIfStartsClause: skip if at sentence/clause start
+      if (fillerConfig.exemptIfStartsClause) {
+        const trimBefore = before.trimEnd();
+        if (trimBefore.length === 0 || /[.!?,]$/.test(trimBefore)) continue;
+      }
+
+      fillerCount++;
+      positions.push({ word: filler, position: m.index, type: 'contextual' });
+    }
+
     if (fillerCount > 0) {
       breakdown[filler] = fillerCount;
       total += fillerCount;
-      matches.forEach(m => positions.push({ word: filler, position: m.index, type: 'contextual' }));
     }
   }
 

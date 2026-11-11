@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { CATEGORY_CONFIG, getRandomQuestion } from '../utils/questions';
 import { saveSession, generateId, getSettings } from '../utils/storage';
 import { transcribeAudio, evaluateTranscript } from '../services/api';
@@ -19,7 +19,6 @@ interface AttemptData {
 
 export default function Practice() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [stage, setStage] = useState<Stage>('question');
   const [selectedQuestion, setSelectedQuestion] = useState<SpeakingQuestion | null>(null);
   const [firstAttempt, setFirstAttempt] = useState<AttemptData | null>(null);
@@ -141,8 +140,12 @@ export default function Practice() {
   };
 
   const handleNewQuestion = () => {
-    navigate('/practice');
-    window.location.reload();
+    setStage('question');
+    setSelectedQuestion(null);
+    setAttemptNumber(1);
+    setFirstAttempt(null);
+    setCurrentAttempt(null);
+    setError(null);
   };
 
   if (stage === 'question') {

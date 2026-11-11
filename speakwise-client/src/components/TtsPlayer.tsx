@@ -43,6 +43,7 @@ export default function TtsPlayer({ text, toneRewrites, selectedVoice, onVoiceCh
   const [activeGender, setActiveGender] = useState<'All' | 'Female' | 'Male'>('All');
   const [isFallback, setIsFallback] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCacheRef = useRef<Map<string, string>>(new Map());
 
   // Dynamically select the exact reworded script for the active tone
   const activeScript = (toneRewrites && toneRewrites[selectedEmotion])
@@ -50,8 +51,10 @@ export default function TtsPlayer({ text, toneRewrites, selectedVoice, onVoiceCh
     : text;
 
   useEffect(() => {
+    const cache = audioCacheRef.current;
     return () => {
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      cache.forEach(url => URL.revokeObjectURL(url));
+      cache.clear();
       if (audioRef.current) audioRef.current.pause();
     };
   }, []);
@@ -62,9 +65,19 @@ export default function TtsPlayer({ text, toneRewrites, selectedVoice, onVoiceCh
     setIsFallback(false);
 
     try {
-      const url = await synthesizeSpeech(activeScript, selectedVoice, 'en-IN', selectedEmotion);
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      const cacheKey = `${selectedVoice}:${selectedEmotion}:${activeScript}`;
+      let url = audioCacheRef.current.get(cacheKey) || null;
+
+      if (!url) {
+        url = await synthesizeSpeech(activeScript, selectedVoice, 'en-IN', selectedEmotion);
+        audioCacheRef.current.set(cacheKey, url);
+      }
+
       setAudioUrl(url);
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
 
       const audio = new Audio(url);
       audio.onended = () => setStatus('ready');
@@ -134,18 +147,16 @@ export default function TtsPlayer({ text, toneRewrites, selectedVoice, onVoiceCh
 
   const handleVoiceSelect = (voiceId: string) => {
     onVoiceChange(voiceId);
+    if (audioRef.current) audioRef.current.pause();
     setStatus('idle');
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
-    audioRef.current = null;
   };
 
   const handleEmotionSelect = (emotion: EmotionTone) => {
     setSelectedEmotion(emotion);
+    if (audioRef.current) audioRef.current.pause();
     setStatus('idle');
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
-    audioRef.current = null;
   };
 
   const filteredVoices = activeGender === 'All'

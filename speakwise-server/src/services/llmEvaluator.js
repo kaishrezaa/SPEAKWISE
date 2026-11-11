@@ -95,87 +95,87 @@ function getAiClient() {
 
 /**
  * Evaluates transcript using Google Gemini models:
- * - Medium tier (default): gemini-2.5-flash / gemini-3.8-flash
- * - Light tier: gemini-2.5-flash-lite / gemini-3.5-flash-lite
+ * Prioritizes models configured in environment variables:
+ * - GEMINI_MEDIUM_MODEL (default: gemini-3.5-flash or gemini-3.5-flash-lite)
+ * - GEMINI_LIGHT_MODEL (default: gemini-3.5-flash-lite)
  */
 export async function getLlmFeedback(transcript, question, metrics, category, tier = 'medium') {
   const ai = getAiClient();
 
-  // Tiered fallback across active and responsive models:
-  // gemini-3.5-flash produces superior reasoning, while gemini-3.5-flash-lite provides instant sub-second backup
-  const candidateModels = [
+  const configuredPrimary = tier === 'light'
+    ? (process.env.GEMINI_LIGHT_MODEL || process.env.GEMINI_MEDIUM_MODEL)
+    : (process.env.GEMINI_MEDIUM_MODEL || process.env.GEMINI_LIGHT_MODEL);
+
+  // Build ordered, deduplicated candidate models list
+  const candidateModels = Array.from(new Set([
+    configuredPrimary,
     'gemini-3.5-flash',
     'gemini-3.5-flash-lite',
-  ];
+  ].filter(Boolean)));
 
   let lastError = null;
   for (const model of candidateModels) {
-    // Retry once with a brief backoff if 503 spike occurs
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        console.log(`[EVAL] Running Gemini evaluation using model: ${model} (attempt ${attempt + 1})`);
+    try {
+      console.log(`[EVAL] Running Gemini evaluation using model: ${model}`);
 
-        const evalPromise = ai.models.generateContent({
-          model,
-          contents: USER_PROMPT_TEMPLATE(transcript, question, metrics, category),
-          config: {
-            systemInstruction: SYSTEM_PROMPT,
-            temperature: 0.2, // Low temperature ensures grounded, sensible reasoning without weird hallucinations
-            responseMimeType: 'application/json',
-          },
-        });
+      const evalPromise = ai.models.generateContent({
+        model,
+        contents: USER_PROMPT_TEMPLATE(transcript, question, metrics, category),
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          temperature: 0.2, // Low temperature ensures grounded, sensible reasoning
+          responseMimeType: 'application/json',
+        },
+      });
 
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout: ${model} took longer than 12s`)), 12000)
-        );
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout: ${model} took longer than 12s`)), 12000)
+      );
 
-        const response = await Promise.race([evalPromise, timeoutPromise]);
+      const response = await Promise.race([evalPromise, timeoutPromise]);
 
-        const content = response.text;
-        if (!content) continue;
+      const content = response.text;
+      if (!content) continue;
 
-        let jsonStr = content.trim();
-        if (jsonStr.startsWith('```')) {
-          jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-        }
-
-        const parsed = JSON.parse(jsonStr);
-        if (typeof parsed.overallScore !== 'number' || !parsed.scores || !parsed.improvedResponse) {
-          continue;
-        }
-
-        return {
-          overallScore: Math.max(0, Math.min(100, Math.round(parsed.overallScore))),
-          scores: {
-            grammar: clampScore(parsed.scores.grammar),
-            vocabulary: clampScore(parsed.scores.vocabulary),
-            fluency: clampScore(parsed.scores.fluency),
-            clarity: clampScore(parsed.scores.clarity),
-            articulation: clampScore(parsed.scores.articulation),
-          },
-          strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 3) : [],
-          improvements: Array.isArray(parsed.improvements) ? parsed.improvements.slice(0, 3) : [],
-          sentenceImprovements: Array.isArray(parsed.sentenceImprovements) ? parsed.sentenceImprovements.slice(0, 4) : [],
-          improvedResponse: parsed.improvedResponse || '',
-          toneRewrites: parsed.toneRewrites || {
-            natural: parsed.improvedResponse || '',
-            formal: parsed.improvedResponse || '',
-            casual: parsed.improvedResponse || '',
-            academic: parsed.improvedResponse || '',
-            encouraging: parsed.improvedResponse || '',
-          },
-          summary: parsed.summary || '',
-          fillerWords: { total: 0, breakdown: {} },
-          modelUsed: model,
-        };
-      } catch (err) {
-        console.warn(`[EVAL] Gemini model ${model} (attempt ${attempt + 1}) failed:`, err.message);
-        lastError = err;
-        if (attempt === 0) {
-          // Wait 1 second before retry if experiencing brief spike
-          await new Promise(r => setTimeout(r, 1000));
-        }
+      let jsonStr = content.trim();
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
       }
+
+      const parsed = JSON.parse(jsonStr);
+      if (typeof parsed.overallScore !== 'number' || !parsed.scores || !parsed.improvedResponse) {
+        continue;
+      }
+
+      return {
+        overallScore: Math.max(0, Math.min(100, Math.round(parsed.overallScore))),
+        scores: {
+          grammar: clampScore(parsed.scores.grammar),
+          vocabulary: clampScore(parsed.scores.vocabulary),
+          fluency: clampScore(parsed.scores.fluency),
+          clarity: clampScore(parsed.scores.clarity),
+          articulation: clampScore(parsed.scores.articulation),
+        },
+        strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 3) : [],
+        improvements: Array.isArray(parsed.improvements) ? parsed.improvements.slice(0, 3) : [],
+        sentenceImprovements: Array.isArray(parsed.sentenceImprovements) ? parsed.sentenceImprovements.slice(0, 4) : [],
+        improvedResponse: parsed.improvedResponse || '',
+        toneRewrites: parsed.toneRewrites || {
+          natural: parsed.improvedResponse || '',
+          formal: parsed.improvedResponse || '',
+          casual: parsed.improvedResponse || '',
+          academic: parsed.improvedResponse || '',
+          encouraging: parsed.improvedResponse || '',
+        },
+        summary: parsed.summary || '',
+        fillerWords: { total: 0, breakdown: {} },
+        modelUsed: model,
+      };
+    } catch (err) {
+      console.warn(`[EVAL] Gemini model ${model} failed:`, err.message);
+      lastError = err;
+      // If 503 or model overload, immediately advance to the next candidate model
+      continue;
     }
   }
 

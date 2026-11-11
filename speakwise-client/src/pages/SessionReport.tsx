@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic } from 'lucide-react';
+import { ArrowLeft, Mic, ArrowRight } from 'lucide-react';
 import { getSession, formatDuration } from '../utils/storage';
 import { CATEGORY_CONFIG } from '../utils/questions';
 import ScoreMeter from '../components/ScoreMeter';
 import TtsPlayer from '../components/TtsPlayer';
+import HighlightedTranscript from '../components/HighlightedTranscript';
 import { getSettings, saveSettings } from '../utils/storage';
 import { useState } from 'react';
 
@@ -27,7 +28,7 @@ export default function SessionReport() {
 
   const { feedback } = session;
   const categoryConfig = CATEGORY_CONFIG[session.category];
-  const scoreColor = (s: number) => s >= 75 ? '#34D399' : s >= 55 ? '#FBBF24' : '#F87171';
+  const scoreColor = (s: number) => (s >= 75 ? '#34D399' : s >= 55 ? '#FBBF24' : '#F87171');
   const hasMultipleAttempts = session.attempts && session.attempts.length > 1;
 
   return (
@@ -42,11 +43,18 @@ export default function SessionReport() {
 
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium px-2 py-1 rounded-full" style={{ background: `${categoryConfig.color}15`, color: categoryConfig.color }}>
+          <span
+            className="text-xs font-medium px-2 py-1 rounded-full"
+            style={{ background: `${categoryConfig.color}15`, color: categoryConfig.color }}
+          >
             {categoryConfig.icon} {categoryConfig.label}
           </span>
           <span className="text-xs text-[#475569]">
-            {new Date(session.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {new Date(session.createdAt).toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
           </span>
           <span className="text-xs text-[#475569]">· {formatDuration(session.duration)}</span>
         </div>
@@ -60,7 +68,10 @@ export default function SessionReport() {
             <svg width="80" height="80" viewBox="0 0 80 80">
               <circle cx="40" cy="40" r="34" fill="none" stroke="#1E2D3D" strokeWidth="6" />
               <circle
-                cx="40" cy="40" r="34" fill="none"
+                cx="40"
+                cy="40"
+                r="34"
+                fill="none"
                 stroke={scoreColor(feedback.overallScore)}
                 strokeWidth="6"
                 strokeDasharray="213.6"
@@ -68,8 +79,20 @@ export default function SessionReport() {
                 strokeLinecap="round"
                 transform="rotate(-90 40 40)"
               />
-              <text x="40" y="40" textAnchor="middle" dominantBaseline="middle" fill={scoreColor(feedback.overallScore)} fontSize="18" fontWeight="700">{feedback.overallScore}</text>
-              <text x="40" y="55" textAnchor="middle" fill="#475569" fontSize="8">/100</text>
+              <text
+                x="40"
+                y="40"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={scoreColor(feedback.overallScore)}
+                fontSize="18"
+                fontWeight="700"
+              >
+                {feedback.overallScore}
+              </text>
+              <text x="40" y="55" textAnchor="middle" fill="#475569" fontSize="8">
+                /100
+              </text>
             </svg>
           </div>
           <div className="flex-1">
@@ -84,19 +107,14 @@ export default function SessionReport() {
         </div>
       </div>
 
-      {/* Transcript */}
+      {/* Transcript with highlighting */}
       <div className="bg-[#161D2B] border border-[#1E2D3D] rounded-xl p-4 mb-5">
-        <h3 className="text-xs text-[#475569] uppercase tracking-widest mb-2">Your Response</h3>
-        <p className="text-sm text-[#94A3B8] leading-relaxed">"{session.transcript}"</p>
-        {feedback.fillerWords.total > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            {Object.entries(feedback.fillerWords.breakdown).map(([word, count]) => (
-              <span key={word} className="text-[10px] px-2 py-0.5 rounded-full bg-[#FBBF24]/10 text-[#FBBF24] border border-[#FBBF24]/20">
-                "{word}" ×{count}
-              </span>
-            ))}
-          </div>
-        )}
+        <h3 className="text-xs text-[#475569] uppercase tracking-widest mb-3">Your Spoken Response</h3>
+        <HighlightedTranscript
+          transcript={session.transcript}
+          fillerBreakdown={feedback.fillerWords?.breakdown}
+          sentenceImprovements={feedback.sentenceImprovements}
+        />
       </div>
 
       {/* Multi-attempt comparison */}
@@ -105,21 +123,35 @@ export default function SessionReport() {
           <h3 className="text-sm font-semibold text-[#F8FAFC] mb-3">Attempt Comparison</h3>
           <div className="space-y-3">
             {session.attempts.map((attempt, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-[#0B0F19] rounded-lg">
-                <div>
-                  <p className="text-xs font-medium text-[#F8FAFC]">Attempt {attempt.attemptNumber}</p>
-                  <p className="text-[10px] text-[#475569] mt-0.5">{formatDuration(attempt.duration)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold" style={{ color: scoreColor(attempt.feedback.overallScore) }}>
-                    {attempt.feedback.overallScore}
-                  </p>
-                  {i > 0 && (
-                    <p className={`text-[10px] font-medium ${attempt.feedback.overallScore > session.attempts[0].feedback.overallScore ? 'text-[#34D399]' : 'text-[#F87171]'}`}>
-                      {attempt.feedback.overallScore > session.attempts[0].feedback.overallScore ? '↑' : '↓'}
-                      {Math.abs(attempt.feedback.overallScore - session.attempts[0].feedback.overallScore)} pts
+              <div key={i} className="p-3 bg-[#0B0F19] rounded-lg border border-[#1E2D3D]">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-semibold text-[#F8FAFC]">Attempt {attempt.attemptNumber}</p>
+                    <span className="text-[10px] text-[#475569]">· {formatDuration(attempt.duration)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-bold" style={{ color: scoreColor(attempt.feedback.overallScore) }}>
+                      {attempt.feedback.overallScore}/100
                     </p>
-                  )}
+                    {i > 0 && (
+                      <p
+                        className={`text-xs font-semibold ${
+                          attempt.feedback.overallScore > session.attempts[0].feedback.overallScore
+                            ? 'text-[#34D399]'
+                            : 'text-[#F87171]'
+                        }`}
+                      >
+                        {attempt.feedback.overallScore > session.attempts[0].feedback.overallScore ? '↑ +' : '↓ '}
+                        {attempt.feedback.overallScore - session.attempts[0].feedback.overallScore}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-[11px] text-[#94A3B8] pt-2 border-t border-[#1E2D3D]/50">
+                  <span>Filler words: {attempt.feedback.fillerWords?.total || 0}</span>
+                  <span>Speaking rate: {attempt.feedback.speakingRate?.wpm || 0} WPM</span>
+                  <span>Word count: {attempt.feedback.wordStats?.wordCount || 0}</span>
                 </div>
               </div>
             ))}
@@ -133,7 +165,10 @@ export default function SessionReport() {
           text={feedback.improvedResponse}
           toneRewrites={feedback.toneRewrites}
           selectedVoice={selectedVoice}
-          onVoiceChange={(v) => { setSelectedVoice(v); saveSettings({ selectedVoice: v }); }}
+          onVoiceChange={(v) => {
+            setSelectedVoice(v);
+            saveSettings({ selectedVoice: v });
+          }}
         />
       )}
 
